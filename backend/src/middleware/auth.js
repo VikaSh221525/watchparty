@@ -16,7 +16,8 @@ export const initClerkMiddleware = clerkMiddleware({
 export const requireAuth = (req, res, next) => {
   try {
     // Check if user is authenticated via Clerk
-    if (!req.auth || !req.auth.userId) {
+    const auth = req.auth();
+    if (!auth || !auth.userId) {
       logger.warn('Unauthorized access attempt', {
         path: req.path,
         method: req.method
@@ -57,8 +58,9 @@ export const getUserFromAuth = (req) => {
     return null;
   }
 
+  const auth = req.auth();
   return {
-    userId: req.auth.userId,
-    sessionId: req.auth.sessionId
+    userId: auth.userId,
+    sessionId: auth.sessionId
   };
 };

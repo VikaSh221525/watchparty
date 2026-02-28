@@ -41,11 +41,10 @@ const messageSchema = new mongoose.Schema({
 messageSchema.index({ roomCode: 1, timestamp: -1 });
 
 // Validation for type-specific required fields
-messageSchema.pre('save', function(next) {
+messageSchema.pre('save', function() {
   if (this.type === 'user' && (!this.userId || !this.username)) {
-    return next(new Error('User messages must have userId and username'));
+    throw new Error('User messages must have userId and username');
   }
-  next();
 });
 
 const Message = mongoose.model('Message', messageSchema);

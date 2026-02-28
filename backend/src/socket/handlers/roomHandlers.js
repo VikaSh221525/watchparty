@@ -78,7 +78,7 @@ export const handleJoinRoom = async (socket, io, data) => {
 };
 
 /**
- * Handle user leaving a room
+ * Handle user leaving a room (explicit leave action only)
  */
 export const handleLeaveRoom = async (socket, io, data) => {
   try {
@@ -92,37 +92,55 @@ export const handleLeaveRoom = async (socket, io, data) => {
       return;
     }
 
-    // Remove user from participants
-    room.participants = room.participants.filter(p => p.userId !== userId);
-    room.lastActivityAt = Date.now();
-    await room.save();
+    // Check if user is the host and the only participant
+    const isHost = room.participants.find(p => p.userId === userId)?.role === 'host';
+    const isOnlyParticipant = room.participants.length === 1;
+
+    if (isHost && isOnlyParticipant) {
+      // Host is leaving and they're the only one - mark room as inactive
+      room.isActive = false;
+      room.lastActivityAt = Date.now();
+      await room.save();
+
+      logger.info('Host left as only participant, room marked inactive', {
+        roomCode,
+        userId,
+        username,
+        socketId: socket.id
+      });
+    } else {
+      // Remove user from participants
+      room.participants = room.participants.filter(p => p.userId !== userId);
+      room.lastActivityAt = Date.now();
+      await room.save();
+
+      // Create and broadcast system message
+      await createSystemMessage(room._id, roomCode, `${username} left the room`);
+
+      // Broadcast to others that user left
+      socket.to(roomCode).emit(SERVER_EVENTS.USER_LEFT, {
+        userId,
+        username
+      });
+
+      // Broadcast new message to remaining users
+      io.to(roomCode).emit(SERVER_EVENTS.NEW_MESSAGE, {
+        type: 'system',
+        content: `${username} left the room`,
+        timestamp: new Date()
+      });
+
+      logger.info('User left room via socket', {
+        roomCode,
+        userId,
+        username,
+        socketId: socket.id
+      });
+    }
 
     // Leave socket room
     socket.leave(roomCode);
     socket.data.roomCode = null;
-
-    // Create and broadcast system message
-    await createSystemMessage(room._id, roomCode, `${username} left the room`);
-
-    // Broadcast to others that user left
-    socket.to(roomCode).emit(SERVER_EVENTS.USER_LEFT, {
-      userId,
-      username
-    });
-
-    // Broadcast new message to remaining users
-    io.to(roomCode).emit(SERVER_EVENTS.NEW_MESSAGE, {
-      type: 'system',
-      content: `${username} left the room`,
-      timestamp: new Date()
-    });
-
-    logger.info('User left room via socket', {
-      roomCode,
-      userId,
-      username,
-      socketId: socket.id
-    });
   } catch (error) {
     logger.error('Error in handleLeaveRoom', {
       error: error.message,
@@ -132,21 +150,27 @@ export const handleLeaveRoom = async (socket, io, data) => {
 };
 
 /**
- * Handle socket disconnect
+ * Handle socket disconnect (page refresh, network issues, etc.)
+ * Only handles socket cleanup, does NOT modify room state
  */
 export const handleDisconnect = async (socket, io) => {
   try {
     const roomCode = socket.data.roomCode;
+    const userId = socket.data.userId;
+    const username = socket.data.username;
+
     if (!roomCode) {
       return;
     }
 
-    // Treat disconnect as leave room
-    await handleLeaveRoom(socket, io, { roomCode });
+    // Only leave the socket room, don't touch MongoDB
+    socket.leave(roomCode);
+    socket.data.roomCode = null;
 
-    logger.info('Socket disconnected', {
+    logger.info('Socket disconnected (no room state change)', {
       socketId: socket.id,
-      userId: socket.data.userId,
+      userId,
+      username,
       roomCode
     });
   } catch (error) {

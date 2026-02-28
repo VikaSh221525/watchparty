@@ -76,9 +76,8 @@ const Room = () => {
     }
 
     return () => {
-      if (roomCode && user) {
-        leaveRoom();
-      }
+      // Don't call leaveRoom() on unmount - this fires on refresh
+      // Only disconnect happens automatically via socket disconnect event
       clearRoom();
       clearMessages();
       hasJoined.current = false;

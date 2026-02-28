@@ -7,6 +7,7 @@ import { logger } from '../utils/logger.js';
  * Handle Clerk webhook events
  * Syncs user data from Clerk to MongoDB
  */
+
 export const handleClerkWebhook = async (req, res) => {
   try {
     // Get webhook signature headers
@@ -19,7 +20,7 @@ export const handleClerkWebhook = async (req, res) => {
     let evt;
 
     try {
-      evt = wh.verify(JSON.stringify(req.body), {
+      evt = wh.verify((req.body), {
         'svix-id': svixId,
         'svix-timestamp': svixTimestamp,
         'svix-signature': svixSignature
@@ -76,6 +77,25 @@ export const handleClerkWebhook = async (req, res) => {
  */
 const handleUserCreated = async (data) => {
   try {
+    // Validate required data
+    if (!data.id || !data.email_addresses || data.email_addresses.length === 0) {
+      logger.error('Invalid user data from webhook', {
+        clerkId: data.id,
+        hasEmail: !!data.email_addresses?.length
+      });
+      return;
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ clerkId: data.id });
+    if (existingUser) {
+      logger.info('User already exists, skipping creation', {
+        clerkId: data.id,
+        email: existingUser.email
+      });
+      return;
+    }
+
     const user = new User({
       clerkId: data.id,
       email: data.email_addresses[0]?.email_address,
@@ -93,10 +113,21 @@ const handleUserCreated = async (data) => {
       username: user.username
     });
   } catch (error) {
+    // Check if it's a duplicate key error
+    if (error.code === 11000) {
+      logger.warn('Duplicate user creation attempt', {
+        clerkId: data?.id,
+        email: data?.email_addresses?.[0]?.email_address
+      });
+      return;
+    }
+    
     logger.error('Failed to create user from webhook', {
       error: error.message,
-      clerkId: data.id
+      stack: error.stack,
+      clerkId: data?.id
     });
+    // Don't throw - just log the error
   }
 };
 
@@ -129,8 +160,10 @@ const handleUserUpdated = async (data) => {
   } catch (error) {
     logger.error('Failed to update user from webhook', {
       error: error.message,
-      clerkId: data.id
+      stack: error.stack,
+      clerkId: data?.id
     });
+    // Don't throw - just log the error
   }
 };
 
@@ -147,7 +180,9 @@ const handleUserDeleted = async (data) => {
   } catch (error) {
     logger.error('Failed to delete user from webhook', {
       error: error.message,
-      clerkId: data.id
+      stack: error.stack,
+      clerkId: data?.id
     });
+    // Don't throw - just log the error
   }
 };

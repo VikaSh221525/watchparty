@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useUser } from '@clerk/clerk-react';
+import { useAuth } from '@clerk/clerk-react';
 import socketService from '../services/socketService';
 
 /**
@@ -7,14 +7,14 @@ import socketService from '../services/socketService';
  * @returns {Object} { socket, isConnected }
  */
 export const useSocket = () => {
-  const { user } = useUser();
+  const { getToken, isSignedIn } = useAuth();
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
     const initSocket = async () => {
-      if (user) {
+      if (isSignedIn) {
         try {
-          const token = await user.getToken();
+          const token = await getToken();
           socketService.connect(token);
           setIsConnected(true);
         } catch (error) {
@@ -30,7 +30,7 @@ export const useSocket = () => {
       socketService.disconnect();
       setIsConnected(false);
     };
-  }, [user]);
+  }, [isSignedIn, getToken]);
 
   return {
     socket: socketService.getSocket(),

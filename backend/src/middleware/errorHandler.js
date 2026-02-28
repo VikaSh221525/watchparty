@@ -12,7 +12,7 @@ export const errorHandler = (err, req, res, next) => {
     stack: err.stack,
     path: req.path,
     method: req.method,
-    userId: req.auth?.userId,
+    userId: req.auth ? req.auth().userId : undefined,
     roomCode: req.params?.roomCode
   });
 

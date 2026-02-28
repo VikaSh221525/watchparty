@@ -10,7 +10,7 @@ import { logger } from '../utils/logger.js';
  */
 export const createRoom = async (req, res, next) => {
   try {
-    const userId = req.auth.userId;
+    const userId = req.auth().userId;
 
     // Get user info from database
     const user = await User.findOne({ clerkId: userId });
@@ -99,7 +99,7 @@ export const getRoomDetails = async (req, res, next) => {
 export const joinRoom = async (req, res, next) => {
   try {
     const { roomCode } = req.params;
-    const userId = req.auth.userId;
+    const userId = req.auth().userId;
 
     // Get user info
     const user = await User.findOne({ clerkId: userId });

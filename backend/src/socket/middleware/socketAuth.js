@@ -1,4 +1,5 @@
-import { clerkClient } from '@clerk/express';
+import { verifyToken } from '@clerk/express';
+import { config } from '../../config/env.js';
 import User from '../../models/User.js';
 import { logger } from '../../utils/logger.js';
 
@@ -20,17 +21,21 @@ export const authenticateSocket = async (socket, next) => {
 
     // Verify token with Clerk
     try {
-      const session = await clerkClient.sessions.verifySession(token);
+      const payload = await verifyToken(token, {
+        secretKey: config.clerk.secretKey
+      });
       
-      if (!session || !session.userId) {
+      if (!payload || !payload.sub) {
         return next(new Error('Invalid authentication token'));
       }
 
+      const userId = payload.sub;
+
       // Get user from database
-      const user = await User.findOne({ clerkId: session.userId });
+      const user = await User.findOne({ clerkId: userId });
       if (!user) {
         logger.warn('Socket connection for non-existent user', {
-          userId: session.userId,
+          userId,
           socketId: socket.id
         });
         return next(new Error('User not found'));

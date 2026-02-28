@@ -7,6 +7,7 @@ import { connectDatabase } from './src/config/database.js';
 import { initClerkMiddleware } from './src/middleware/auth.js';
 import { errorHandler, notFoundHandler } from './src/middleware/errorHandler.js';
 import routes from './src/routes/index.js';
+import webhookRoutes from './src/routes/webhooks.js';
 import { authenticateSocket } from './src/socket/middleware/socketAuth.js';
 import { initializeSocketHandlers } from './src/socket/index.js';
 
@@ -36,7 +37,10 @@ app.use(cors({
 // Raw body for webhooks (MUST be before express.json())
 app.use('/webhooks/clerk', express.raw({ type: 'application/json' }));
 
-// Clerk middleware (must be before routes)
+// Webhook routes (MUST be before express.json() and Clerk middleware)
+app.use('/webhooks', webhookRoutes);
+
+// Clerk middleware (must be before API routes)
 app.use(initClerkMiddleware);
 
 // Body parsing

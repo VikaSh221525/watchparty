@@ -76,12 +76,11 @@ const roomSchema = new mongoose.Schema({
 });
 
 // Validate single host constraint
-roomSchema.pre('save', function(next) {
+roomSchema.pre('save', function() {
   const hostCount = this.participants.filter(p => p.role === 'host').length;
   if (hostCount !== 1) {
-    return next(new Error('Room must have exactly one host'));
+    throw new Error('Room must have exactly one host');
   }
-  next();
 });
 
 // Virtual field for shareable link
