@@ -32,8 +32,16 @@ export const handleJoinRoom = async (socket, io, data) => {
     }
 
     // Join socket room
-    socket.join(roomCode);
+    await socket.join(roomCode);
     socket.data.roomCode = roomCode;
+
+    logger.info('Socket joined room', {
+      roomCode,
+      socketId: socket.id,
+      userId,
+      socketRooms: Array.from(socket.rooms),
+      socketsInRoom: io.sockets.adapter.rooms.get(roomCode)?.size || 0
+    });
 
     // Send current state to joining user
     socket.emit(SERVER_EVENTS.SYNC_STATE, {

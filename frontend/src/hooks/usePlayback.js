@@ -16,31 +16,26 @@ export const usePlayback = (roomCode) => {
 
     // Play event
     const handlePlay = (data) => {
-      console.log('Received PLAY event', data);
       updatePlaybackState({ isPlaying: true, timestamp: data.timestamp });
     };
 
     // Pause event
     const handlePause = (data) => {
-      console.log('Received PAUSE event', data);
       updatePlaybackState({ isPlaying: false, timestamp: data.timestamp });
     };
 
     // Seek event
     const handleSeek = (data) => {
-      console.log('Received SEEK event', data);
       updatePlaybackState({ timestamp: data.timestamp });
     };
 
     // Change video event
     const handleChangeVideo = (data) => {
-      console.log('Received CHANGE_VIDEO event', data);
       updateCurrentVideo({ videoId: data.videoId, title: data.title });
     };
 
     // Sync state (for playback state)
     const handleSyncState = (data) => {
-      console.log('Received SYNC_STATE event', data);
       if (data.currentVideo) {
         updateCurrentVideo(data.currentVideo);
       }

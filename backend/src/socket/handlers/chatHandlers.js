@@ -33,8 +33,8 @@ export const handleSendMessage = async (socket, io, data) => {
     // Create message in database
     const message = await createMessage(room._id, roomCode, userId, username, content);
 
-    // Broadcast message to all participants
-    io.to(roomCode).emit(SERVER_EVENTS.NEW_MESSAGE, {
+    // Broadcast message to all participants (including sender)
+    io.in(roomCode).emit(SERVER_EVENTS.NEW_MESSAGE, {
       id: message._id,
       userId: message.userId,
       username: message.username,

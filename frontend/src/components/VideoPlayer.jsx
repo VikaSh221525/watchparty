@@ -87,19 +87,12 @@ const VideoPlayer = ({ onPlayerReady }) => {
 
   // Sync playback state
   useEffect(() => {
-    if (!playerRef.current || playerState !== 'ready') {
-      console.log('Cannot sync playback - player not ready', { hasPlayer: !!playerRef.current, playerState });
-      return;
-    }
-
-    console.log('Syncing playback state', { isPlaying: playbackState.isPlaying, timestamp: playbackState.timestamp });
+    if (!playerRef.current || playerState !== 'ready') return;
 
     try {
       if (playbackState.isPlaying) {
-        console.log('Calling playVideo()');
         playerRef.current.playVideo();
       } else {
-        console.log('Calling pauseVideo()');
         playerRef.current.pauseVideo();
       }
     } catch (err) {
@@ -126,21 +119,12 @@ const VideoPlayer = ({ onPlayerReady }) => {
 
   // Load new video
   useEffect(() => {
-    if (!playerRef.current || playerState !== 'ready') {
-      console.log('Player not ready or no player ref', { hasPlayer: !!playerRef.current, playerState });
-      return;
-    }
-
-    if (!currentVideo?.videoId) {
-      console.log('No video ID available');
-      return;
-    }
+    if (!playerRef.current || playerState !== 'ready') return;
+    if (!currentVideo?.videoId) return;
 
     try {
-      console.log('Loading video:', currentVideo.videoId);
       playerRef.current.loadVideoById(currentVideo.videoId);
       setError(null);
-      setPlayerState('ready'); // Keep it ready
     } catch (err) {
       console.error('Error loading video:', err);
       setError('Failed to load video');

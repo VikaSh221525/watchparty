@@ -18,37 +18,22 @@ const RoomControls = ({ player }) => {
     (currentParticipant.role === ROLES.HOST || currentParticipant.role === ROLES.MODERATOR);
 
   const handlePlayPause = () => {
-    console.log('Play/Pause clicked', {
-      canControl,
-      hasPlayer: !!player,
-      isPlaying: playbackState.isPlaying,
-      currentParticipant,
-      currentUser: currentUser?.clerkId
-    });
-
-    if (!canControl) {
-      console.warn('User cannot control playback - insufficient permissions');
-      return;
-    }
+    if (!canControl) return;
 
     try {
       const currentTime = player?.getCurrentTime ? player.getCurrentTime() : 0;
       
       if (playbackState.isPlaying) {
-        console.log('Emitting pause event at', currentTime);
         pause(currentTime);
       } else {
-        console.log('Emitting play event at', currentTime);
         play(currentTime);
       }
     } catch (error) {
       console.error('Error toggling play/pause:', error);
       // Fallback to timestamp 0 if player isn't ready
       if (playbackState.isPlaying) {
-        console.log('Fallback: pausing at 0');
         pause(0);
       } else {
-        console.log('Fallback: playing at 0');
         play(0);
       }
     }
@@ -58,7 +43,6 @@ const RoomControls = ({ player }) => {
     e.preventDefault();
     if (!videoUrl.trim() || !canControl) return;
 
-    console.log('Changing video to:', videoUrl);
     changeVideo(videoUrl);
     setVideoUrl('');
   };

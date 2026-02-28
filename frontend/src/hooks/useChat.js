@@ -3,6 +3,7 @@ import { useChatStore } from '../stores/chatStore';
 import socketService from '../services/socketService';
 import { getRoomMessages } from '../services/roomService';
 import { SERVER_EVENTS } from '../utils/constants';
+import { useSocket } from './useSocket';
 
 /**
  * Custom hook to manage chat operations
@@ -11,9 +12,13 @@ import { SERVER_EVENTS } from '../utils/constants';
  */
 export const useChat = (roomCode) => {
   const { setMessages, addMessage } = useChatStore();
+  const { isConnected } = useSocket();
 
   useEffect(() => {
-    if (!roomCode) return;
+    if (!roomCode || !isConnected) return;
+
+    const socket = socketService.getSocket();
+    if (!socket) return;
 
     // Load chat history
     const loadChatHistory = async () => {
@@ -27,18 +32,18 @@ export const useChat = (roomCode) => {
 
     loadChatHistory();
 
-    // New message event
+    // New message event handler
     const handleNewMessage = (data) => {
       addMessage(data);
     };
 
     // Register event listener
-    socketService.on(SERVER_EVENTS.NEW_MESSAGE, handleNewMessage);
+    socket.on(SERVER_EVENTS.NEW_MESSAGE, handleNewMessage);
 
     return () => {
-      socketService.off(SERVER_EVENTS.NEW_MESSAGE, handleNewMessage);
+      socket.off(SERVER_EVENTS.NEW_MESSAGE, handleNewMessage);
     };
-  }, [roomCode, setMessages, addMessage]);
+  }, [roomCode, isConnected]);
 
   const sendMessage = (content) => {
     socketService.sendMessage(roomCode, content);

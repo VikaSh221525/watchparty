@@ -3,10 +3,12 @@ import { useRoomStore } from '../stores/roomStore';
 import { useUserStore } from '../stores/userStore';
 import { ROLES } from '../utils/constants';
 import socketService from '../services/socketService';
+import { useUser } from '@clerk/clerk-react';
 
 const ParticipantList = () => {
   const { participants, roomCode, hostId } = useRoomStore();
   const { currentUser } = useUserStore();
+  const { user: clerkUser } = useUser();
 
   const isHost = currentUser?.clerkId === hostId;
 
@@ -42,6 +44,15 @@ const ParticipantList = () => {
     }
   };
 
+  // Get profile image URL - use Clerk image for current user, placeholder for others
+  const getProfileImage = (participant) => {
+    const isCurrentUser = participant.userId === currentUser?.clerkId;
+    if (isCurrentUser && clerkUser?.imageUrl) {
+      return clerkUser.imageUrl;
+    }
+    return null;
+  };
+
   return (
     <div className="flex flex-col h-full bg-base-200 rounded-lg">
       <div className="p-4 border-b border-base-300">
@@ -54,15 +65,22 @@ const ParticipantList = () => {
         {participants.map((participant) => {
           const isCurrentUser = participant.userId === currentUser?.clerkId;
           const canManage = isHost && !isCurrentUser;
+          const profileImage = getProfileImage(participant);
 
           return (
             <div
               key={participant.userId}
               className="flex items-center gap-3 p-3 bg-base-300 rounded-lg hover:bg-base-100 transition-colors"
             >
-              <div className="avatar placeholder">
-                <div className="bg-primary text-primary-content rounded-full w-10">
-                  <span className="text-sm">{participant.username[0].toUpperCase()}</span>
+              <div className="avatar">
+                <div className="w-10 rounded-full">
+                  {profileImage ? (
+                    <img src={profileImage} alt={participant.username} />
+                  ) : (
+                    <div className="bg-primary text-primary-content w-10 h-10 rounded-full flex items-center justify-center">
+                      <span className="text-sm font-semibold">{participant.username[0].toUpperCase()}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
