@@ -159,7 +159,7 @@ export const handleLeaveRoom = async (socket, io, data) => {
 
 /**
  * Handle socket disconnect (page refresh, network issues, etc.)
- * Only handles socket cleanup, does NOT modify room state
+ * Remove participant after a delay if they don't reconnect
  */
 export const handleDisconnect = async (socket, io) => {
   try {
@@ -171,16 +171,75 @@ export const handleDisconnect = async (socket, io) => {
       return;
     }
 
-    // Only leave the socket room, don't touch MongoDB
-    socket.leave(roomCode);
-    socket.data.roomCode = null;
-
-    logger.info('Socket disconnected (no room state change)', {
+    logger.info('Socket disconnected, starting removal timer', {
       socketId: socket.id,
       userId,
       username,
       roomCode
     });
+
+    // Wait 10 seconds before removing participant
+    // This allows page refresh to reconnect without removing the user
+    setTimeout(async () => {
+      try {
+        // Check if user has reconnected by looking for active sockets with same userId
+        const socketsInRoom = await io.in(roomCode).fetchSockets();
+        const userStillConnected = socketsInRoom.some(s => s.data.userId === userId);
+
+        if (userStillConnected) {
+          logger.info('User reconnected, not removing from room', {
+            userId,
+            username,
+            roomCode
+          });
+          return;
+        }
+
+        // User didn't reconnect, remove them from the room
+        const room = await Room.findOne({ roomCode });
+        if (!room) return;
+
+        // Remove user from participants
+        const participantExists = room.participants.some(p => p.userId === userId);
+        if (!participantExists) return;
+
+        room.participants = room.participants.filter(p => p.userId !== userId);
+        room.lastActivityAt = Date.now();
+        await room.save();
+
+        // Create and broadcast system message
+        await createSystemMessage(room._id, roomCode, `${username} left the room`);
+
+        // Broadcast to others that user left
+        io.to(roomCode).emit(SERVER_EVENTS.USER_LEFT, {
+          userId,
+          username
+        });
+
+        // Broadcast new message
+        io.to(roomCode).emit(SERVER_EVENTS.NEW_MESSAGE, {
+          type: 'system',
+          content: `${username} left the room`,
+          timestamp: new Date()
+        });
+
+        logger.info('User removed from room after disconnect timeout', {
+          userId,
+          username,
+          roomCode
+        });
+      } catch (error) {
+        logger.error('Error removing user after disconnect', {
+          error: error.message,
+          userId,
+          roomCode
+        });
+      }
+    }, 10000); // 10 second delay
+
+    // Leave socket room immediately
+    socket.leave(roomCode);
+    socket.data.roomCode = null;
   } catch (error) {
     logger.error('Error in handleDisconnect', {
       error: error.message,

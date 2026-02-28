@@ -4,6 +4,7 @@ import { useRoomStore } from '../stores/roomStore';
 import socketService from '../services/socketService';
 import { SERVER_EVENTS } from '../utils/constants';
 import { playJoinSound, playLeaveSound } from '../utils/sounds';
+import { useSocket } from './useSocket';
 
 /**
  * Custom hook to manage room state and operations
@@ -13,6 +14,7 @@ import { playJoinSound, playLeaveSound } from '../utils/sounds';
  */
 export const useRoom = (roomCode, userId) => {
   const navigate = useNavigate();
+  const { isConnected } = useSocket();
   const {
     updateParticipants,
     addParticipant,
@@ -22,16 +24,21 @@ export const useRoom = (roomCode, userId) => {
   } = useRoomStore();
 
   useEffect(() => {
-    if (!roomCode || !userId) return;
+    if (!roomCode || !userId || !isConnected) return;
+
+    const socket = socketService.getSocket();
+    if (!socket) return;
 
     // User joined
     const handleUserJoined = (data) => {
+      console.log('USER_JOINED event received:', data);
       addParticipant(data);
       playJoinSound();
     };
 
     // User left
     const handleUserLeft = (data) => {
+      console.log('USER_LEFT event received:', data);
       removeParticipant(data.userId);
       playLeaveSound();
     };
@@ -64,25 +71,25 @@ export const useRoom = (roomCode, userId) => {
       updateParticipants(data.participants);
     };
 
-    // Register event listeners
-    socketService.on(SERVER_EVENTS.USER_JOINED, handleUserJoined);
-    socketService.on(SERVER_EVENTS.USER_LEFT, handleUserLeft);
-    socketService.on(SERVER_EVENTS.ROLE_ASSIGNED, handleRoleAssigned);
-    socketService.on(SERVER_EVENTS.HOST_TRANSFERRED, handleHostTransferred);
-    socketService.on(SERVER_EVENTS.PARTICIPANT_REMOVED, handleParticipantRemoved);
-    socketService.on(SERVER_EVENTS.FORCE_DISCONNECT, handleForceDisconnect);
-    socketService.on(SERVER_EVENTS.SYNC_STATE, handleSyncState);
+    // Register event listeners directly on socket
+    socket.on(SERVER_EVENTS.USER_JOINED, handleUserJoined);
+    socket.on(SERVER_EVENTS.USER_LEFT, handleUserLeft);
+    socket.on(SERVER_EVENTS.ROLE_ASSIGNED, handleRoleAssigned);
+    socket.on(SERVER_EVENTS.HOST_TRANSFERRED, handleHostTransferred);
+    socket.on(SERVER_EVENTS.PARTICIPANT_REMOVED, handleParticipantRemoved);
+    socket.on(SERVER_EVENTS.FORCE_DISCONNECT, handleForceDisconnect);
+    socket.on(SERVER_EVENTS.SYNC_STATE, handleSyncState);
 
     return () => {
-      socketService.off(SERVER_EVENTS.USER_JOINED, handleUserJoined);
-      socketService.off(SERVER_EVENTS.USER_LEFT, handleUserLeft);
-      socketService.off(SERVER_EVENTS.ROLE_ASSIGNED, handleRoleAssigned);
-      socketService.off(SERVER_EVENTS.HOST_TRANSFERRED, handleHostTransferred);
-      socketService.off(SERVER_EVENTS.PARTICIPANT_REMOVED, handleParticipantRemoved);
-      socketService.off(SERVER_EVENTS.FORCE_DISCONNECT, handleForceDisconnect);
-      socketService.off(SERVER_EVENTS.SYNC_STATE, handleSyncState);
+      socket.off(SERVER_EVENTS.USER_JOINED, handleUserJoined);
+      socket.off(SERVER_EVENTS.USER_LEFT, handleUserLeft);
+      socket.off(SERVER_EVENTS.ROLE_ASSIGNED, handleRoleAssigned);
+      socket.off(SERVER_EVENTS.HOST_TRANSFERRED, handleHostTransferred);
+      socket.off(SERVER_EVENTS.PARTICIPANT_REMOVED, handleParticipantRemoved);
+      socket.off(SERVER_EVENTS.FORCE_DISCONNECT, handleForceDisconnect);
+      socket.off(SERVER_EVENTS.SYNC_STATE, handleSyncState);
     };
-  }, [roomCode, userId, navigate, addParticipant, removeParticipant, updateParticipantRole, setHostId, updateParticipants]);
+  }, [roomCode, userId, isConnected, navigate]);
 
   const joinRoom = (username) => {
     socketService.joinRoom(roomCode, userId, username);
