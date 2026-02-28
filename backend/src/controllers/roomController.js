@@ -140,6 +140,7 @@ export const joinRoom = async (req, res, next) => {
 
     res.json({
       roomCode: room.roomCode,
+      hostId: room.hostId,
       participants: room.participants,
       currentVideo: room.currentVideo,
       playbackState: room.playbackState

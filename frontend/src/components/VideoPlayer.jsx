@@ -89,10 +89,18 @@ const VideoPlayer = ({ onPlayerReady }) => {
   useEffect(() => {
     if (!playerRef.current || playerState !== 'ready') return;
 
+    console.log('VideoPlayer: Syncing playback state', {
+      isPlaying: playbackState.isPlaying,
+      playerState: playerState,
+      hasPlayer: !!playerRef.current
+    });
+
     try {
       if (playbackState.isPlaying) {
+        console.log('VideoPlayer: Calling playVideo()');
         playerRef.current.playVideo();
       } else {
+        console.log('VideoPlayer: Calling pauseVideo()');
         playerRef.current.pauseVideo();
       }
     } catch (err) {
