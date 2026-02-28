@@ -39,14 +39,16 @@ const VideoPlayer = ({ onPlayerReady }) => {
   const initializePlayer = () => {
     if (!containerRef.current) return;
 
+    const initialVideoId = currentVideo?.videoId || '';
+
     playerRef.current = new window.YT.Player(containerRef.current, {
       height: '100%',
       width: '100%',
-      videoId: currentVideo?.videoId || '',
+      videoId: initialVideoId,
       playerVars: {
         autoplay: 0,
-        controls: 0,
-        disablekb: 1,
+        controls: 1, // Enable controls for better UX
+        disablekb: 0,
         fs: 1,
         modestbranding: 1,
         rel: 0
@@ -116,11 +118,21 @@ const VideoPlayer = ({ onPlayerReady }) => {
 
   // Load new video
   useEffect(() => {
-    if (!playerRef.current || !currentVideo?.videoId || playerState !== 'ready') return;
+    if (!playerRef.current || playerState !== 'ready') {
+      console.log('Player not ready or no player ref', { hasPlayer: !!playerRef.current, playerState });
+      return;
+    }
+
+    if (!currentVideo?.videoId) {
+      console.log('No video ID available');
+      return;
+    }
 
     try {
+      console.log('Loading video:', currentVideo.videoId);
       playerRef.current.loadVideoById(currentVideo.videoId);
       setError(null);
+      setPlayerState('ready'); // Keep it ready
     } catch (err) {
       console.error('Error loading video:', err);
       setError('Failed to load video');

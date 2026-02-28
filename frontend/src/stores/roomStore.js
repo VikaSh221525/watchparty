@@ -36,7 +36,9 @@ export const useRoomStore = create((set) => ({
     )
   })),
   
-  updatePlaybackState: (playbackState) => set({ playbackState }),
+  updatePlaybackState: (playbackState) => set((state) => ({
+    playbackState: { ...state.playbackState, ...playbackState }
+  })),
   
   updateCurrentVideo: (video) => set({ currentVideo: video }),
   

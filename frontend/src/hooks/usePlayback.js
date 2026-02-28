@@ -26,7 +26,7 @@ export const usePlayback = (roomCode) => {
 
     // Seek event
     const handleSeek = (data) => {
-      updatePlaybackState((prev) => ({ ...prev, timestamp: data.timestamp }));
+      updatePlaybackState({ timestamp: data.timestamp });
     };
 
     // Change video event

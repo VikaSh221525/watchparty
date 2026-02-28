@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { Play, Pause, Link as LinkIcon, Check } from 'lucide-react';
 import { useRoomStore } from '../stores/roomStore';
 import { useUserStore } from '../stores/userStore';
+import { usePlayback } from '../hooks/usePlayback';
 import { ROLES } from '../utils/constants';
-import socketService from '../services/socketService';
 
 const RoomControls = ({ player }) => {
-  const { roomCode, playbackState, participants, hostId } = useRoomStore();
+  const { roomCode, playbackState, participants } = useRoomStore();
   const { currentUser } = useUserStore();
+  const { play, pause, changeVideo } = usePlayback(roomCode);
   const [videoUrl, setVideoUrl] = useState('');
   const [copied, setCopied] = useState(false);
 
@@ -17,18 +18,29 @@ const RoomControls = ({ player }) => {
     (currentParticipant.role === ROLES.HOST || currentParticipant.role === ROLES.MODERATOR);
 
   const handlePlayPause = () => {
-    if (!player || !canControl) return;
+    if (!canControl) {
+      console.log('User cannot control playback');
+      return;
+    }
 
     try {
-      const currentTime = player.getCurrentTime();
+      const currentTime = player?.getCurrentTime ? player.getCurrentTime() : 0;
       
       if (playbackState.isPlaying) {
-        socketService.pause(roomCode, currentTime);
+        console.log('Pausing video at', currentTime);
+        pause(currentTime);
       } else {
-        socketService.play(roomCode, currentTime);
+        console.log('Playing video at', currentTime);
+        play(currentTime);
       }
     } catch (error) {
       console.error('Error toggling play/pause:', error);
+      // Fallback to timestamp 0 if player isn't ready
+      if (playbackState.isPlaying) {
+        pause(0);
+      } else {
+        play(0);
+      }
     }
   };
 
@@ -36,7 +48,8 @@ const RoomControls = ({ player }) => {
     e.preventDefault();
     if (!videoUrl.trim() || !canControl) return;
 
-    socketService.changeVideo(roomCode, videoUrl);
+    console.log('Changing video to:', videoUrl);
+    changeVideo(videoUrl);
     setVideoUrl('');
   };
 
@@ -85,7 +98,6 @@ const RoomControls = ({ player }) => {
             <button
               onClick={handlePlayPause}
               className="btn btn-primary w-full gap-2"
-              disabled={!player}
             >
               {playbackState.isPlaying ? (
                 <>
