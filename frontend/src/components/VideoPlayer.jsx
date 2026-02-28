@@ -47,11 +47,12 @@ const VideoPlayer = ({ onPlayerReady }) => {
       videoId: initialVideoId,
       playerVars: {
         autoplay: 0,
-        controls: 1, // Enable controls for better UX
-        disablekb: 0,
-        fs: 1,
-        modestbranding: 1,
-        rel: 0
+        controls: 0, // Disable YouTube controls for sync
+        disablekb: 1, // Disable keyboard controls
+        fs: 1, // Allow fullscreen
+        modestbranding: 1, // Minimal YouTube branding
+        rel: 0, // Don't show related videos
+        iv_load_policy: 3 // Disable video annotations
       },
       events: {
         onReady: handlePlayerReady,
@@ -86,12 +87,19 @@ const VideoPlayer = ({ onPlayerReady }) => {
 
   // Sync playback state
   useEffect(() => {
-    if (!playerRef.current || playerState !== 'ready') return;
+    if (!playerRef.current || playerState !== 'ready') {
+      console.log('Cannot sync playback - player not ready', { hasPlayer: !!playerRef.current, playerState });
+      return;
+    }
+
+    console.log('Syncing playback state', { isPlaying: playbackState.isPlaying, timestamp: playbackState.timestamp });
 
     try {
       if (playbackState.isPlaying) {
+        console.log('Calling playVideo()');
         playerRef.current.playVideo();
       } else {
+        console.log('Calling pauseVideo()');
         playerRef.current.pauseVideo();
       }
     } catch (err) {
@@ -171,6 +179,8 @@ const VideoPlayer = ({ onPlayerReady }) => {
         </div>
       )}
       <div ref={containerRef} className="w-full h-full" />
+      {/* Transparent overlay to prevent direct player interaction */}
+      <div className="absolute inset-0 z-10" style={{ pointerEvents: 'auto' }} />
     </div>
   );
 };

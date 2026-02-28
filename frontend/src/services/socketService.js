@@ -71,6 +71,7 @@ class SocketService {
    * Play video
    */
   play(roomCode, timestamp) {
+    console.log('Emitting PLAY event', { roomCode, timestamp, connected: this.socket?.connected });
     this.socket?.emit(CLIENT_EVENTS.PLAY, { roomCode, timestamp });
   }
 
@@ -78,6 +79,7 @@ class SocketService {
    * Pause video
    */
   pause(roomCode, timestamp) {
+    console.log('Emitting PAUSE event', { roomCode, timestamp, connected: this.socket?.connected });
     this.socket?.emit(CLIENT_EVENTS.PAUSE, { roomCode, timestamp });
   }
 
