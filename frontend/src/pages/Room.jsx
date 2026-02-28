@@ -103,6 +103,11 @@ const Room = () => {
     setPlayer(playerInstance);
   };
 
+  const handleLeaveRoom = () => {
+    leaveRoom();
+    navigate('/');
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-base-200 flex items-center justify-center">
@@ -139,7 +144,7 @@ const Room = () => {
           {/* Left Column - Video and Controls */}
           <div className="lg:col-span-2 space-y-4">
             <VideoPlayer onPlayerReady={handlePlayerReady} />
-            <RoomControls player={player} />
+            <RoomControls player={player} onLeaveRoom={handleLeaveRoom} />
           </div>
 
           {/* Right Column - Chat and Participants */}

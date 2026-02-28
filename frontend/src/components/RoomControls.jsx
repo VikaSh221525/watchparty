@@ -1,14 +1,15 @@
 import { useState } from 'react';
-import { Play, Pause, Link as LinkIcon, Check } from 'lucide-react';
+import { Play, Pause, Link as LinkIcon, Check, LogOut } from 'lucide-react';
+import { useNavigate } from 'react-router';
 import { useRoomStore } from '../stores/roomStore';
 import { useUserStore } from '../stores/userStore';
-import { usePlayback } from '../hooks/usePlayback';
+import socketService from '../services/socketService';
 import { ROLES } from '../utils/constants';
 
-const RoomControls = ({ player }) => {
+const RoomControls = ({ player, onLeaveRoom }) => {
+  const navigate = useNavigate();
   const { roomCode, playbackState, participants } = useRoomStore();
   const { currentUser } = useUserStore();
-  const { play, pause, changeVideo } = usePlayback(roomCode);
   const [videoUrl, setVideoUrl] = useState('');
   const [copied, setCopied] = useState(false);
 
@@ -18,23 +19,37 @@ const RoomControls = ({ player }) => {
     (currentParticipant.role === ROLES.HOST || currentParticipant.role === ROLES.MODERATOR);
 
   const handlePlayPause = () => {
-    if (!canControl) return;
+    if (!canControl) {
+      console.log('Cannot control - not host/moderator');
+      return;
+    }
+
+    console.log('Play/Pause clicked', {
+      isPlaying: playbackState.isPlaying,
+      player: player,
+      roomCode: roomCode
+    });
 
     try {
       const currentTime = player?.getCurrentTime ? player.getCurrentTime() : 0;
+      console.log('Current time:', currentTime);
       
       if (playbackState.isPlaying) {
-        pause(currentTime);
+        console.log('Emitting PAUSE event');
+        socketService.pause(roomCode, currentTime);
       } else {
-        play(currentTime);
+        console.log('Emitting PLAY event');
+        socketService.play(roomCode, currentTime);
       }
     } catch (error) {
       console.error('Error toggling play/pause:', error);
       // Fallback to timestamp 0 if player isn't ready
       if (playbackState.isPlaying) {
-        pause(0);
+        console.log('Fallback: Emitting PAUSE with timestamp 0');
+        socketService.pause(roomCode, 0);
       } else {
-        play(0);
+        console.log('Fallback: Emitting PLAY with timestamp 0');
+        socketService.play(roomCode, 0);
       }
     }
   };
@@ -43,7 +58,7 @@ const RoomControls = ({ player }) => {
     e.preventDefault();
     if (!videoUrl.trim() || !canControl) return;
 
-    changeVideo(videoUrl);
+    socketService.changeVideo(roomCode, videoUrl);
     setVideoUrl('');
   };
 
@@ -51,6 +66,17 @@ const RoomControls = ({ player }) => {
     navigator.clipboard.writeText(roomCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleLeaveRoom = () => {
+    if (confirm('Are you sure you want to leave the room?')) {
+      if (onLeaveRoom) {
+        onLeaveRoom();
+      } else {
+        socketService.leaveRoom(roomCode, currentUser?.clerkId);
+        navigate('/');
+      }
+    }
   };
 
   return (
@@ -136,6 +162,16 @@ const RoomControls = ({ player }) => {
           <span className="text-sm">Only host and moderators can control playback</span>
         </div>
       )}
+
+      {/* Leave Room Button */}
+      <div className="divider my-2"></div>
+      <button
+        onClick={handleLeaveRoom}
+        className="btn btn-error btn-outline w-full gap-2"
+      >
+        <LogOut className="w-5 h-5" />
+        Leave Room
+      </button>
     </div>
   );
 };
