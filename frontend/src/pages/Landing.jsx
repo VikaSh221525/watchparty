@@ -73,7 +73,7 @@ const Landing = () => {
         {/* Background Image with Overlay */}
         <div className="absolute inset-0">
           <img
-            src="/landingpageImg.png"
+            src="/watchparty.jpg"
             alt="Watch Together"
             className="w-full h-full object-cover opacity-30"
           />
@@ -218,7 +218,7 @@ const Landing = () => {
           <a className="link link-hover">Terms</a>
         </div>
         <div>
-          <p className="opacity-70">© 2024 Streamify. All rights reserved.</p>
+          <p className="opacity-70">© 2026 Streamify. All rights reserved.</p>
         </div>
       </footer>
     </div>

@@ -37,7 +37,18 @@ const VideoPlayer = ({ onPlayerReady }) => {
   }, []);
 
   const initializePlayer = () => {
-    if (!containerRef.current) return;
+    if (!containerRef.current) {
+      // Retry after a short delay if container isn't ready yet
+      setTimeout(() => {
+        initializePlayer();
+      }, 100);
+      return;
+    }
+
+    if (playerRef.current) {
+      // Prevent duplicate initialization
+      return;
+    }
 
     const initialVideoId = currentVideo?.videoId || '';
 
@@ -89,18 +100,10 @@ const VideoPlayer = ({ onPlayerReady }) => {
   useEffect(() => {
     if (!playerRef.current || playerState !== 'ready') return;
 
-    console.log('VideoPlayer: Syncing playback state', {
-      isPlaying: playbackState.isPlaying,
-      playerState: playerState,
-      hasPlayer: !!playerRef.current
-    });
-
     try {
       if (playbackState.isPlaying) {
-        console.log('VideoPlayer: Calling playVideo()');
         playerRef.current.playVideo();
       } else {
-        console.log('VideoPlayer: Calling pauseVideo()');
         playerRef.current.pauseVideo();
       }
     } catch (err) {

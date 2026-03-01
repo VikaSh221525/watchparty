@@ -75,7 +75,7 @@ export const usePlayback = (roomCode) => {
       socket.off(SERVER_EVENTS.SYNC_STATE, handleSyncState);
       socket.off(SERVER_EVENTS.ERROR, handleError);
     };
-  }, [roomCode, isConnected, updatePlaybackState, updateCurrentVideo]);
+  }, [roomCode, isConnected]);
 
   const play = (timestamp) => {
     socketService.play(roomCode, timestamp);
