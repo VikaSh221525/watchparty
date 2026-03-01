@@ -7,9 +7,12 @@ const ChatPanel = () => {
   const { messages } = useChatStore();
   const { currentUser } = useUserStore();
   const messagesEndRef = useRef(null);
+  const chatContainerRef = useRef(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
   };
 
   useEffect(() => {
@@ -30,7 +33,7 @@ const ChatPanel = () => {
         <h3 className="font-semibold text-lg">Live Chat</h3>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.length === 0 ? (
           <div className="text-center text-sm opacity-50 mt-8">
             No messages yet. Start the conversation!
