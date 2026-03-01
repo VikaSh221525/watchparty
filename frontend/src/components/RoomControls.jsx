@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Play, Pause, Link as LinkIcon, Check, LogOut } from 'lucide-react';
+import { Play, Pause, Link as LinkIcon, Check, LogOut, RotateCcw, Rewind, FastForward } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useRoomStore } from '../stores/roomStore';
 import { useUserStore } from '../stores/userStore';
@@ -51,6 +51,44 @@ const RoomControls = ({ player, onLeaveRoom }) => {
         console.log('Fallback: Emitting PLAY with timestamp 0');
         socketService.play(roomCode, 0);
       }
+    }
+  };
+
+  const handleRestart = () => {
+    if (!canControl || !player) return;
+
+    try {
+      socketService.seek(roomCode, 0);
+      console.log('Restarting video from beginning');
+    } catch (error) {
+      console.error('Error restarting video:', error);
+    }
+  };
+
+  const handleSkipBackward = () => {
+    if (!canControl || !player) return;
+
+    try {
+      const currentTime = player.getCurrentTime ? player.getCurrentTime() : 0;
+      const newTime = Math.max(0, currentTime - 10); // Don't go below 0
+      socketService.seek(roomCode, newTime);
+      console.log('Skipping backward 10 seconds');
+    } catch (error) {
+      console.error('Error skipping backward:', error);
+    }
+  };
+
+  const handleSkipForward = () => {
+    if (!canControl || !player) return;
+
+    try {
+      const currentTime = player.getCurrentTime ? player.getCurrentTime() : 0;
+      const duration = player.getDuration ? player.getDuration() : Infinity;
+      const newTime = Math.min(duration, currentTime + 10); // Don't exceed video duration
+      socketService.seek(roomCode, newTime);
+      console.log('Skipping forward 10 seconds');
+    } catch (error) {
+      console.error('Error skipping forward:', error);
     }
   };
 
@@ -131,6 +169,37 @@ const RoomControls = ({ player, onLeaveRoom }) => {
                 </>
               )}
             </button>
+          </div>
+
+          {/* Seek Controls */}
+          <div>
+            <label className="text-sm opacity-70 mb-2 block">Seek Controls</label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                onClick={handleRestart}
+                className="btn btn-outline btn-sm gap-1"
+                title="Restart from beginning"
+              >
+                <RotateCcw className="w-4 h-4" />
+                Start
+              </button>
+              <button
+                onClick={handleSkipBackward}
+                className="btn btn-outline btn-sm gap-1"
+                title="Skip backward 10 seconds"
+              >
+                <Rewind className="w-4 h-4" />
+                -10s
+              </button>
+              <button
+                onClick={handleSkipForward}
+                className="btn btn-outline btn-sm gap-1"
+                title="Skip forward 10 seconds"
+              >
+                <FastForward className="w-4 h-4" />
+                +10s
+              </button>
+            </div>
           </div>
 
           {/* Change Video */}
