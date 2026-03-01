@@ -43,10 +43,27 @@ export const handleJoinRoom = async (socket, io, data) => {
       socketsInRoom: io.sockets.adapter.rooms.get(roomCode)?.size || 0
     });
 
+    // Calculate current timestamp if video is playing
+    let currentTimestamp = room.playbackState.timestamp;
+    if (room.playbackState.isPlaying) {
+      // Calculate elapsed time since last update
+      const elapsedSeconds = (Date.now() - room.playbackState.lastUpdated) / 1000;
+      currentTimestamp = room.playbackState.timestamp + elapsedSeconds;
+      logger.info('Calculated current timestamp for playing video', {
+        storedTimestamp: room.playbackState.timestamp,
+        elapsedSeconds,
+        currentTimestamp
+      });
+    }
+
     // Send current state to joining user
     socket.emit(SERVER_EVENTS.SYNC_STATE, {
       currentVideo: room.currentVideo || null,
-      playbackState: room.playbackState,
+      playbackState: {
+        isPlaying: room.playbackState.isPlaying,
+        timestamp: currentTimestamp,
+        lastUpdated: Date.now()
+      },
       participants: room.participants
     });
 
