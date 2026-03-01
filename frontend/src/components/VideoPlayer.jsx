@@ -134,7 +134,36 @@ const VideoPlayer = ({ onPlayerReady }) => {
     if (!currentVideo?.videoId) return;
 
     try {
-      playerRef.current.loadVideoById(currentVideo.videoId);
+      // Load video at the current timestamp (for new joiners)
+      if (playbackState.timestamp > 0) {
+        playerRef.current.loadVideoById({
+          videoId: currentVideo.videoId,
+          startSeconds: playbackState.timestamp
+        });
+        console.log('Loading video at timestamp:', playbackState.timestamp);
+        
+        // If the room is paused, pause the video immediately after loading
+        if (!playbackState.isPlaying) {
+          // Small delay to ensure video is loaded before pausing
+          setTimeout(() => {
+            if (playerRef.current) {
+              playerRef.current.pauseVideo();
+              console.log('Pausing video after load (room is paused)');
+            }
+          }, 100);
+        }
+      } else {
+        playerRef.current.loadVideoById(currentVideo.videoId);
+        
+        // Also handle pause state for videos starting at 0:00
+        if (!playbackState.isPlaying) {
+          setTimeout(() => {
+            if (playerRef.current) {
+              playerRef.current.pauseVideo();
+            }
+          }, 100);
+        }
+      }
       setError(null);
     } catch (err) {
       console.error('Error loading video:', err);
