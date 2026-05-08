@@ -2,6 +2,7 @@ import Room from '../../models/Room.js';
 import { SERVER_EVENTS, ERROR_CODES } from '../../utils/constants.js';
 import { validateChatMessage } from '../../middleware/validation.js';
 import { createMessage } from '../../controllers/messageController.js';
+import { checkChatRateLimit } from '../../middleware/rateLimiter.js';
 import { logger } from '../../utils/logger.js';
 
 /**
@@ -17,6 +18,16 @@ export const handleSendMessage = async (socket, io, data) => {
     const messageValidation = validateChatMessage(content);
     if (!messageValidation.valid) {
       socket.emit(SERVER_EVENTS.ERROR, messageValidation.error);
+      return;
+    }
+
+    // Rate limit chat messages
+    const allowed = await checkChatRateLimit(userId);
+    if (!allowed) {
+      socket.emit(SERVER_EVENTS.ERROR, {
+        message: 'Too many messages. You can send up to 30 messages per minute.',
+        code: 'RATE_LIMIT_EXCEEDED'
+      });
       return;
     }
 

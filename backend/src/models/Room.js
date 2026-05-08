@@ -59,11 +59,6 @@ const roomSchema = new mongoose.Schema({
       default: Date.now
     }
   },
-  isActive: {
-    type: Boolean,
-    default: true,
-    index: true
-  },
   createdAt: {
     type: Date,
     default: Date.now
@@ -75,8 +70,9 @@ const roomSchema = new mongoose.Schema({
   }
 });
 
-// Validate single host constraint
+// Validate single host constraint — only when participants array is non-empty
 roomSchema.pre('save', function() {
+  if (this.participants.length === 0) return; // empty room is valid
   const hostCount = this.participants.filter(p => p.role === 'host').length;
   if (hostCount !== 1) {
     throw new Error('Room must have exactly one host');

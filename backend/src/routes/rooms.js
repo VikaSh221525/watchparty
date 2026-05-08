@@ -3,14 +3,15 @@ import { createRoom, getRoomDetails, joinRoom } from '../controllers/roomControl
 import { getMessageHistory } from '../controllers/messageController.js';
 import { requireAuth } from '../middleware/auth.js';
 import { validateRoomCode } from '../middleware/validation.js';
+import { roomCreationLimiter } from '../middleware/rateLimiter.js';
 
 const router = express.Router();
 
 // All room routes require authentication
 router.use(requireAuth);
 
-// Create a new room
-router.post('/', createRoom);
+// Create a new room (rate limited: 5 per hour per user)
+router.post('/', roomCreationLimiter, createRoom);
 
 // Get room details
 router.get('/:roomCode', validateRoomCode, getRoomDetails);

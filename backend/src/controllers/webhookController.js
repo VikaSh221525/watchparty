@@ -2,6 +2,7 @@ import { Webhook } from 'svix';
 import User from '../models/User.js';
 import { config } from '../config/env.js';
 import { logger } from '../utils/logger.js';
+import { invalidateUserCache } from '../socket/middleware/socketAuth.js';
 
 /**
  * Handle Clerk webhook events
@@ -153,6 +154,9 @@ const handleUserUpdated = async (data) => {
 
     await user.save();
 
+    // Invalidate Redis cache so next connection fetches fresh data
+    await invalidateUserCache(data.id);
+
     logger.info('User updated from webhook', {
       clerkId: data.id,
       username: user.username
@@ -173,6 +177,9 @@ const handleUserUpdated = async (data) => {
 const handleUserDeleted = async (data) => {
   try {
     await User.deleteOne({ clerkId: data.id });
+
+    // Invalidate Redis cache
+    await invalidateUserCache(data.id);
 
     logger.info('User deleted from webhook', {
       clerkId: data.id

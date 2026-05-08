@@ -1,6 +1,7 @@
 import Room from '../../models/Room.js';
 import { SERVER_EVENTS, ERROR_CODES, ROLES } from '../../utils/constants.js';
 import { validateRole } from '../../middleware/validation.js';
+import { setCachedRoom, invalidateRoomCache } from '../../utils/roomCache.js';
 import { logger } from '../../utils/logger.js';
 
 /**
@@ -67,6 +68,7 @@ export const handleAssignRole = async (socket, io, data) => {
     targetParticipant.role = role;
     room.lastActivityAt = Date.now();
     await room.save();
+    await setCachedRoom(roomCode, room);
 
     // Broadcast role assignment to all participants
     io.to(roomCode).emit(SERVER_EVENTS.ROLE_ASSIGNED, {
@@ -138,6 +140,7 @@ export const handleTransferHost = async (socket, io, data) => {
     room.hostId = targetUserId;
     room.lastActivityAt = Date.now();
     await room.save();
+    await setCachedRoom(roomCode, room);
 
     // Broadcast host transfer to all participants
     io.to(roomCode).emit(SERVER_EVENTS.HOST_TRANSFERRED, {
@@ -213,6 +216,7 @@ export const handleRemoveParticipant = async (socket, io, data) => {
     room.participants = room.participants.filter(p => p.userId !== targetUserId);
     room.lastActivityAt = Date.now();
     await room.save();
+    await setCachedRoom(roomCode, room);
 
     // Find target socket and force disconnect
     const sockets = await io.in(roomCode).fetchSockets();

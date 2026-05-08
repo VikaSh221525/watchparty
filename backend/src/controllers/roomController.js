@@ -45,8 +45,7 @@ export const createRoom = async (req, res, next) => {
         userId,
         username: user.username,
         role: ROLES.HOST
-      }],
-      isActive: true
+      }]
     });
 
     await room.save();
@@ -85,8 +84,7 @@ export const getRoomDetails = async (req, res, next) => {
       hostId: room.hostId,
       participants: room.participants,
       currentVideo: room.currentVideo,
-      playbackState: room.playbackState,
-      isActive: room.isActive
+      playbackState: room.playbackState
     });
   } catch (error) {
     next(error);
@@ -113,19 +111,21 @@ export const joinRoom = async (req, res, next) => {
       throw new AppError('Room not found', 404, ERROR_CODES.ROOM_NOT_FOUND);
     }
 
-    // Check if room is active
-    if (!room.isActive) {
-      throw new AppError('Room is no longer active', 410, ERROR_CODES.ROOM_INACTIVE);
-    }
-
     // Check if user is already in the room
     const existingParticipant = room.participants.find(p => p.userId === userId);
     if (!existingParticipant) {
-      // Add user as participant
+      // If room is empty, the first person to rejoin becomes the host
+      const isEmptyRoom = room.participants.length === 0;
+      const role = isEmptyRoom ? ROLES.HOST : ROLES.PARTICIPANT;
+
+      if (isEmptyRoom) {
+        room.hostId = userId;
+      }
+
       room.participants.push({
         userId,
         username: user.username,
-        role: ROLES.PARTICIPANT
+        role
       });
 
       room.lastActivityAt = Date.now();
@@ -134,7 +134,8 @@ export const joinRoom = async (req, res, next) => {
       logger.info('User joined room', {
         roomCode,
         userId,
-        username: user.username
+        username: user.username,
+        role
       });
     }
 
