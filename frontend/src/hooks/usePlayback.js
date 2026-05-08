@@ -37,10 +37,18 @@ export const usePlayback = (roomCode) => {
       updatePlaybackState({ timestamp: data.timestamp });
     };
 
-    // Change video event
+    // Change video event — also resets playback state to 0:00
     const handleChangeVideo = (data) => {
       console.log('CHANGE_VIDEO event received:', data);
       updateCurrentVideo({ videoId: data.videoId, title: data.title });
+      // Backend always sends playbackState: { isPlaying: false, timestamp: 0 }
+      // Apply it so VideoPlayer loads the new video from the beginning
+      if (data.playbackState) {
+        updatePlaybackState(data.playbackState);
+      } else {
+        // Fallback safety: reset manually if backend didn't send it
+        updatePlaybackState({ isPlaying: false, timestamp: 0 });
+      }
     };
 
     // Sync state (for playback state)
@@ -67,6 +75,7 @@ export const usePlayback = (roomCode) => {
     socket.on(SERVER_EVENTS.SYNC_STATE, handleSyncState);
     socket.on(SERVER_EVENTS.ERROR, handleError);
 
+    // Cleanup function (runs on unmount or dependency change)
     return () => {
       socket.off(SERVER_EVENTS.PLAY, handlePlay);
       socket.off(SERVER_EVENTS.PAUSE, handlePause);

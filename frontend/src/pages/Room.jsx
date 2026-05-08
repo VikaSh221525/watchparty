@@ -29,7 +29,7 @@ const Room = () => {
   const playerRef = useRef(null);
   const hasJoined = useRef(false);
 
-  const { setRoom, clearRoom } = useRoomStore();
+  const { setRoom, clearRoom, currentVideo } = useRoomStore();
   const { setUser, currentUser } = useUserStore();
   const { clearMessages } = useChatStore();
 
@@ -143,7 +143,10 @@ const Room = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Video and Controls */}
           <div className="lg:col-span-2 space-y-4">
-            <VideoPlayer onPlayerReady={handlePlayerReady} />
+            <VideoPlayer
+              key={currentVideo?.videoId ?? 'no-video'}
+              onPlayerReady={handlePlayerReady}
+            />
             <RoomControls player={player} onLeaveRoom={handleLeaveRoom} />
           </div>
 

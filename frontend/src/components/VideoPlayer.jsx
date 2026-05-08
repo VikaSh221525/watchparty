@@ -5,6 +5,7 @@ import { Loader2, AlertCircle, Video } from 'lucide-react';
 const VideoPlayer = ({ onPlayerReady }) => {
   const playerRef = useRef(null);
   const containerRef = useRef(null);
+  const mountedRef = useRef(true);  // guard against post-unmount setState/retries
   const [playerState, setPlayerState] = useState('loading');
   const [error, setError] = useState(null);
   const { currentVideo, playbackState } = useRoomStore();
@@ -27,20 +28,28 @@ const VideoPlayer = ({ onPlayerReady }) => {
     }
 
     return () => {
-      if (playerRef.current) {
-        playerRef.current.destroy();
+      mountedRef.current = false;
+      try {
+        if (playerRef.current) {
+          playerRef.current.destroy();
+          playerRef.current = null;
+        }
+      } catch (err) {
+        // destroy() can throw if the iframe was already removed from the DOM
+        // by a React reconciliation pass — swallow it silently
+        console.warn('VideoPlayer cleanup error (safe to ignore):', err.message);
         playerRef.current = null;
       }
-      // Clean up global callback
       window.onYouTubeIframeAPIReady = null;
     };
   }, []);
 
   const initializePlayer = () => {
     if (!containerRef.current) {
-      // Retry after a short delay if container isn't ready yet
+      // Retry after a short delay if container isn't ready yet,
+      // but stop if the component was unmounted in the meantime
       setTimeout(() => {
-        initializePlayer();
+        if (mountedRef.current) initializePlayer();
       }, 100);
       return;
     }
@@ -128,42 +137,28 @@ const VideoPlayer = ({ onPlayerReady }) => {
     }
   }, [playbackState.timestamp, playerState]);
 
-  // Load new video
+  // Load new video — always starts from 0:00
+  // playbackState is already reset to { isPlaying: false, timestamp: 0 }
+  // by the CHANGE_VIDEO handler in usePlayback before this effect runs
   useEffect(() => {
     if (!playerRef.current || playerState !== 'ready') return;
     if (!currentVideo?.videoId) return;
 
     try {
-      // Load video at the current timestamp (for new joiners)
-      if (playbackState.timestamp > 0) {
-        playerRef.current.loadVideoById({
-          videoId: currentVideo.videoId,
-          startSeconds: playbackState.timestamp
-        });
-        console.log('Loading video at timestamp:', playbackState.timestamp);
-        
-        // If the room is paused, pause the video immediately after loading
-        if (!playbackState.isPlaying) {
-          // Small delay to ensure video is loaded before pausing
-          setTimeout(() => {
-            if (playerRef.current) {
-              playerRef.current.pauseVideo();
-              console.log('Pausing video after load (room is paused)');
-            }
-          }, 100);
-        }
-      } else {
-        playerRef.current.loadVideoById(currentVideo.videoId);
-        
-        // Also handle pause state for videos starting at 0:00
-        if (!playbackState.isPlaying) {
-          setTimeout(() => {
-            if (playerRef.current) {
-              playerRef.current.pauseVideo();
-            }
-          }, 100);
-        }
+      playerRef.current.loadVideoById({
+        videoId: currentVideo.videoId,
+        startSeconds: playbackState.timestamp  // 0 for new video, correct ts for new joiners
+      });
+
+      // Pause immediately if room is paused
+      if (!playbackState.isPlaying) {
+        setTimeout(() => {
+          if (playerRef.current) {
+            playerRef.current.pauseVideo();
+          }
+        }, 100);
       }
+
       setError(null);
     } catch (err) {
       console.error('Error loading video:', err);
@@ -202,7 +197,14 @@ const VideoPlayer = ({ onPlayerReady }) => {
           <Loader2 className="w-12 h-12 animate-spin text-primary" />
         </div>
       )}
-      <div ref={containerRef} className="w-full h-full" />
+      {/* YouTube IFrame API mounts into this div.
+          The component-level key on <VideoPlayer> in Room.jsx ensures React
+          fully remounts this entire component (and this div) when videoId changes,
+          preventing stale iframe references from causing removeChild crashes. */}
+      <div
+        ref={containerRef}
+        className="w-full h-full"
+      />
       {/* Transparent overlay to prevent direct player interaction */}
       <div className="absolute inset-0 z-10" style={{ pointerEvents: 'auto' }} />
     </div>

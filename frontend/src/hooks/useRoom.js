@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useRoomStore } from '../stores/roomStore';
+import { useUserStore } from '../stores/userStore';
+import { useChatStore } from '../stores/chatStore';
 import socketService from '../services/socketService';
 import { SERVER_EVENTS } from '../utils/constants';
 import { playJoinSound, playLeaveSound } from '../utils/sounds';
@@ -15,6 +17,8 @@ import { useSocket } from './useSocket';
 export const useRoom = (roomCode, userId) => {
   const navigate = useNavigate();
   const { isConnected } = useSocket();
+  const { currentUser, setUser } = useUserStore();
+  const { addMessage } = useChatStore();
   const {
     updateParticipants,
     addParticipant,
@@ -48,11 +52,31 @@ export const useRoom = (roomCode, userId) => {
       updateParticipantRole(data.userId, data.role);
     };
 
-    // Host transferred
+    // Host transferred (fired when host leaves and someone is auto-promoted,
+    // or when host manually transfers via the transfer_host event)
     const handleHostTransferred = (data) => {
-      setHostId(data.newHostId);
-      updateParticipantRole(data.newHostId, 'host');
-      updateParticipantRole(data.previousHostId, 'participant');
+      const { newHostId, newHostUsername } = data;
+
+      // Update the room-level hostId
+      setHostId(newHostId);
+
+      // Promote the new host's role in the participants list.
+      // Note: do NOT remove the old host here — USER_LEFT fires immediately
+      // after this event (guaranteed by Socket.io ordering) and handleUserLeft
+      // already calls removeParticipant + playLeaveSound for the old host.
+      updateParticipantRole(newHostId, 'host');
+
+      // If the current user is the newly promoted host, update their own role
+      if (currentUser && currentUser.clerkId === newHostId) {
+        setUser({ ...currentUser, role: 'host' });
+      }
+
+      // Surface the promotion as a system message in chat
+      addMessage({
+        type: 'system',
+        content: `${newHostUsername} is now the host.`,
+        timestamp: new Date().toISOString()
+      });
     };
 
     // Participant removed
@@ -89,7 +113,7 @@ export const useRoom = (roomCode, userId) => {
       socket.off(SERVER_EVENTS.FORCE_DISCONNECT, handleForceDisconnect);
       socket.off(SERVER_EVENTS.SYNC_STATE, handleSyncState);
     };
-  }, [roomCode, userId, isConnected, navigate]);
+  }, [roomCode, userId, isConnected, navigate, currentUser, setUser, addMessage, removeParticipant, updateParticipantRole, setHostId]);
 
   const joinRoom = (username) => {
     socketService.joinRoom(roomCode, userId, username);
