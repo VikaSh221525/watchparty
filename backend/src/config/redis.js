@@ -1,6 +1,7 @@
 import Redis from 'ioredis';
 import { logger } from '../utils/logger.js';
 
+// Redis client instance and availability flag
 let redisClient = null;
 let isRedisAvailable = false;
 
